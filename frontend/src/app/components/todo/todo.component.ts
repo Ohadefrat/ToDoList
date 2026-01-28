@@ -59,9 +59,9 @@ export class TodoComponent implements OnInit, OnDestroy {
   selectedFilter: 'all' | 'completed' | 'pending' = 'all';
   selectedPriority: 'all' | 'low' | 'medium' | 'high' = 'all';
   priorities: { value: string; label: string; color: string }[] = [
-    { value: 'low', label: 'Low', color: '#4caf50' },
-    { value: 'medium', label: 'Medium', color: '#ff9800' },
-    { value: 'high', label: 'High', color: '#f44336' }
+    { value: 'low', label: 'Low', color: '#66bb6a' },
+    { value: 'medium', label: 'Medium', color: '#ffa726' },
+    { value: 'high', label: 'High', color: '#ef5350' }
   ];
   private subscriptions: Subscription[] = [];
   private unlockTimer: any = null; // Timer for auto-unlock

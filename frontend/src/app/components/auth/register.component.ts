@@ -66,22 +66,78 @@ import { ApiService } from '../../services/api.service';
       justify-content: center;
       align-items: center;
       min-height: calc(100vh - 64px);
-      padding: 20px;
+      padding: 24px;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
     }
     .auth-card {
       width: 100%;
-      max-width: 400px;
+      max-width: 420px;
+      animation: fadeIn 0.5s ease-out;
+      box-shadow: var(--shadow-lg) !important;
+    }
+    .auth-card-header {
+      margin-bottom: 8px;
+      padding: 24px 24px 16px 24px !important;
+      background: linear-gradient(135deg, var(--primary-50), white) !important;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .auth-card-header mat-card-title {
+      font-size: 24px !important;
+      font-weight: 600 !important;
+      color: var(--gray-800) !important;
+      text-align: center;
+    }
+    mat-card-content {
+      padding: 32px 24px !important;
     }
     .full-width {
       width: 100%;
-      margin-bottom: 16px;
+      margin-bottom: 20px;
     }
     .auth-footer {
       text-align: center;
-      margin-top: 16px;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--gray-200);
     }
-    .auth-card-header {
-      margin-bottom: 16px;
+    .auth-footer p {
+      margin: 0;
+      color: var(--gray-600);
+      font-size: 14px;
+    }
+    .auth-footer a {
+      color: var(--primary-600);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color var(--transition-fast);
+    }
+    .auth-footer a:hover {
+      color: var(--primary-700);
+      text-decoration: underline;
+    }
+    button[type="submit"] {
+      margin-top: 8px;
+      height: 48px;
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+    @media (max-width: 480px) {
+      .auth-container {
+        padding: 16px;
+      }
+      .auth-card {
+        max-width: 100%;
+      }
+      mat-card-content {
+        padding: 24px 16px !important;
+      }
+      .auth-card-header {
+        padding: 20px 16px 12px 16px !important;
+      }
+      .auth-card-header mat-card-title {
+        font-size: 20px !important;
+      }
     }
   `]
 })
