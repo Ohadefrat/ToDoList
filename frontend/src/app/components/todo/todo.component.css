@@ -1,0 +1,231 @@
+.todo-container {
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 0 20px;
+}
+
+.form-card,
+.tasks-card {
+  margin-bottom: 20px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 0 4px;
+}
+
+.user-info {
+  font-weight: 500;
+  color: #666;
+}
+
+.title-field {
+  flex: 1;
+  min-width: 200px;
+}
+
+.description-field {
+  flex: 1;
+  min-width: 200px;
+}
+
+.priority-field {
+  min-width: 120px;
+}
+
+.date-field {
+  min-width: 180px;
+}
+
+.filters-card {
+  margin-bottom: 20px;
+}
+
+.filters-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.filter-field {
+  min-width: 180px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.task-item {
+  height: auto !important;
+  min-height: 60px;
+  padding: 12px 0 !important;
+}
+
+.task-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 16px;
+}
+
+.task-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+}
+
+.task-checkbox {
+  margin-top: 4px;
+}
+
+.task-text {
+  flex: 1;
+}
+
+.task-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.task-title {
+  font-weight: 500;
+  font-size: 16px;
+}
+
+.task-badges {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.priority-chip {
+  font-size: 10px;
+  height: 20px;
+  color: white !important;
+}
+
+.overdue-chip {
+  background-color: #f44336 !important;
+  color: white !important;
+  font-size: 10px;
+  height: 20px;
+}
+
+.task-due-date {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.task-due-date.overdue {
+  color: #f44336;
+  font-weight: 500;
+}
+
+.task-item.overdue {
+  border-left: 3px solid #f44336;
+  padding-left: 12px;
+}
+
+.task-description {
+  font-size: 14px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.task-text.completed .task-title {
+  text-decoration: line-through;
+  color: #999;
+}
+
+.task-text.completed .task-description {
+  text-decoration: line-through;
+  color: #bbb;
+}
+
+.task-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.edit-title-field,
+.edit-description-field,
+.edit-priority-field,
+.edit-date-field {
+  width: 100%;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.locked-chip,
+.editing-chip {
+  font-size: 10px;
+  height: 20px;
+  margin-left: 8px;
+}
+
+.locked-chip {
+  background-color: #ff9800 !important;
+  color: white !important;
+}
+
+.editing-chip {
+  background-color: #4caf50 !important;
+  color: white !important;
+}
+
+.task-actions button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+  }
+
+  .title-field,
+  .description-field {
+    width: 100%;
+  }
+
+  .task-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .task-actions {
+    justify-content: flex-end;
+  }
+}

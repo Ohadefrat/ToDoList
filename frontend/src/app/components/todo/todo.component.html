@@ -1,0 +1,189 @@
+<div class="todo-container">
+  <!-- Header with user info and logout -->
+  <div class="header-actions">
+    <div class="user-info">
+      <span>Welcome, {{ getCurrentUser()?.username || 'User' }}</span>
+    </div>
+    <button mat-button (click)="logout()">
+      <mat-icon>logout</mat-icon>
+      Logout
+    </button>
+  </div>
+
+  <!-- Add Task Form -->
+  <mat-card class="form-card">
+    <mat-card-header>
+      <mat-card-title>Add New Task</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="title-field">
+          <mat-label>Task Title</mat-label>
+          <input matInput [(ngModel)]="newTask.title" placeholder="Enter task title" (keyup.enter)="createTask()">
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="description-field">
+          <mat-label>Description (Optional)</mat-label>
+          <input matInput [(ngModel)]="newTask.description" placeholder="Enter description" (keyup.enter)="createTask()">
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="priority-field">
+          <mat-label>Priority</mat-label>
+          <mat-select [(ngModel)]="newTask.priority">
+            <mat-option value="low">Low</mat-option>
+            <mat-option value="medium">Medium</mat-option>
+            <mat-option value="high">High</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="date-field">
+          <mat-label>Due Date</mat-label>
+          <input matInput [matDatepicker]="picker" [(ngModel)]="newTask.dueDate" placeholder="Select due date">
+          <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+          <mat-datepicker #picker></mat-datepicker>
+        </mat-form-field>
+        <button mat-raised-button color="primary" (click)="createTask()">
+          <mat-icon>add</mat-icon>
+          Add Task
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <mat-card-content>
+      <div class="filters-row">
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Filter by Status</mat-label>
+          <mat-select [(ngModel)]="selectedFilter" (selectionChange)="onFilterChange()">
+            <mat-option value="all">All Tasks</mat-option>
+            <mat-option value="pending">Pending</mat-option>
+            <mat-option value="completed">Completed</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Filter by Priority</mat-label>
+          <mat-select [(ngModel)]="selectedPriority" (selectionChange)="onFilterChange()">
+            <mat-option value="all">All Priorities</mat-option>
+            <mat-option value="high">High</mat-option>
+            <mat-option value="medium">Medium</mat-option>
+            <mat-option value="low">Low</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Tasks List -->
+  <mat-card class="tasks-card">
+    <mat-card-header>
+      <mat-card-title>To-Do List ({{ filteredTasks.length }})</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      @if (filteredTasks.length === 0) {
+        <div class="empty-state">
+          <p>No tasks found. Add your first task above!</p>
+        </div>
+      } @else {
+        <mat-list>
+          @for (task of filteredTasks; track task._id) {
+            <mat-divider></mat-divider>
+            <mat-list-item class="task-item" [class.overdue]="isOverdue(task)">
+              <div class="task-content">
+                @if (editingTask && editingTask._id === task._id) {
+                  <div class="edit-form">
+                    <mat-form-field appearance="outline" class="edit-title-field">
+                      <mat-label>Title</mat-label>
+                      <input matInput [(ngModel)]="editingTask.title" (keyup.enter)="updateTask()">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" class="edit-description-field">
+                      <mat-label>Description</mat-label>
+                      <input matInput [(ngModel)]="editingTask.description" (keyup.enter)="updateTask()">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" class="edit-priority-field">
+                      <mat-label>Priority</mat-label>
+                      <mat-select [(ngModel)]="editingTask.priority">
+                        <mat-option value="low">Low</mat-option>
+                        <mat-option value="medium">Medium</mat-option>
+                        <mat-option value="high">High</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" class="edit-date-field">
+                      <mat-label>Due Date</mat-label>
+                      <input matInput [matDatepicker]="editPicker" [(ngModel)]="editingTask.dueDate" placeholder="Select due date">
+                      <mat-datepicker-toggle matSuffix [for]="editPicker"></mat-datepicker-toggle>
+                      <mat-datepicker #editPicker></mat-datepicker>
+                    </mat-form-field>
+                    <div class="edit-actions">
+                      <button mat-icon-button color="primary" (click)="updateTask()" title="Save">
+                        <mat-icon>check</mat-icon>
+                      </button>
+                      <button mat-icon-button (click)="cancelEdit()" title="Cancel">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="task-info">
+                    <mat-checkbox 
+                      [checked]="task.completed" 
+                      [disabled]="isTaskLocked(task)"
+                      (change)="toggleTask(task)"
+                      class="task-checkbox">
+                    </mat-checkbox>
+                    <div class="task-text" [class.completed]="task.completed">
+                      <div class="task-title-row">
+                        <span class="task-title">{{ task.title }}</span>
+                        <div class="task-badges">
+                          <mat-chip [style.background-color]="getPriorityColor(task.priority)" class="priority-chip">
+                            {{ getPriorityLabel(task.priority) }}
+                          </mat-chip>
+                          @if (isTaskLocked(task)) {
+                            <mat-chip class="locked-chip" disabled>Locked</mat-chip>
+                          }
+                          @if (isTaskLockedByMe(task)) {
+                            <mat-chip class="editing-chip">Editing</mat-chip>
+                          }
+                          @if (isOverdue(task)) {
+                            <mat-chip class="overdue-chip">Overdue</mat-chip>
+                          }
+                        </div>
+                      </div>
+                      @if (task.description) {
+                        <div class="task-description">{{ task.description }}</div>
+                      }
+                      @if (task.dueDate) {
+                        <div class="task-due-date" [class.overdue]="isOverdue(task)">
+                          <mat-icon>event</mat-icon>
+                          Due: {{ task.dueDate | date:'short' }}
+                        </div>
+                      }
+                    </div>
+                  </div>
+                  <div class="task-actions">
+                    <button 
+                      mat-icon-button 
+                      color="primary" 
+                      (click)="editTask(task)" 
+                      [disabled]="isTaskLocked(task)"
+                      [matTooltip]="isTaskLocked(task) ? 'Task is being edited by another user' : 'Edit'"
+                      title="Edit">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button 
+                      mat-icon-button 
+                      color="warn" 
+                      (click)="deleteTask(task._id!)" 
+                      [disabled]="isTaskLocked(task)"
+                      [matTooltip]="isTaskLocked(task) ? 'Task is being edited' : 'Delete'"
+                      title="Delete">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                }
+              </div>
+            </mat-list-item>
+          }
+        </mat-list>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>
