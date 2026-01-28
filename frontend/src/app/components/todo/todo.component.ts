@@ -15,11 +15,13 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { ApiService, Task } from '../../services/api.service';
 import { SocketService } from '../../services/socket.service';
 import { convertTaskDate } from '../../utils/task.utils';
+import { TaskDialogComponent } from './task-dialog.component';
 
 @Component({
   selector: 'app-todo',
@@ -39,7 +41,8 @@ import { convertTaskDate } from '../../utils/task.utils';
     MatTooltipModule,
     MatSelectModule,
     MatDatepickerModule,
-    MatNativeDateModule
+    MatNativeDateModule,
+    MatDialogModule
   ],
   templateUrl: './todo.component.html',
   styleUrl: './todo.component.css'
@@ -74,7 +77,8 @@ export class TodoComponent implements OnInit, OnDestroy {
     private snackBar: MatSnackBar,
     private router: Router,
     private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
+    private ngZone: NgZone,
+    private dialog: MatDialog
   ) {
     this.clientId = this.socketService.getClientId();
     
@@ -267,22 +271,103 @@ export class TodoComponent implements OnInit, OnDestroy {
   }
 
   createTask() {
-    if (this.newTask.title?.trim()) {
+    this.openTaskModal();
+  }
+
+  openTaskModal(task?: Task) {
+    const isEditMode = !!task;
+    const taskData = task ? { ...task } : {
+      title: '',
+      description: '',
+      priority: 'medium' as const,
+      dueDate: null,
+      completed: false
+    };
+
+    // If editing, lock the task first
+    if (isEditMode && task?._id) {
+      // Check if task is locked by another client
+      if (task.lockedBy && task.lockedBy !== this.clientId) {
+        this.snackBar.open('This task is being edited by another user', 'Close', { duration: 3000 });
+        return;
+      }
+
+      // Lock the task before editing
+      const taskId = task._id;
+      this.apiService.lockTask(taskId, this.clientId).subscribe({
+        next: (updatedTask) => {
+          // Update task with lock info if returned
+          const index = this.tasks.findIndex(t => t._id === taskId);
+          if (index !== -1 && updatedTask) {
+            this.tasks[index].lockedBy = updatedTask.lockedBy || this.clientId;
+            this.tasks[index].lockedAt = updatedTask.lockedAt || new Date();
+          } else if (index !== -1) {
+            // Fallback: set lock info manually
+            this.tasks[index].lockedBy = this.clientId;
+            this.tasks[index].lockedAt = new Date();
+          }
+          // Set editingTask for unlock tracking
+          this.editingTask = { ...task };
+          // Start auto-unlock timer (5 minutes)
+          this.startUnlockTimer(taskId);
+          // Also set up beforeunload to unlock on page close
+          window.addEventListener('beforeunload', this.handleBeforeUnload);
+          
+          // Open modal after locking
+          this.openDialog(taskData, isEditMode);
+        },
+        error: (error) => {
+          if (error.status === 423) {
+            this.snackBar.open('Task is already being edited by another user', 'Close', { duration: 3000 });
+          } else {
+            console.error('Error locking task:', error);
+            this.snackBar.open('Error locking task', 'Close', { duration: 3000 });
+          }
+        }
+      });
+    } else {
+      // For new task, open modal directly
+      this.openDialog(taskData, false);
+    }
+  }
+
+  private openDialog(taskData: Partial<Task>, isEditMode: boolean) {
+    const dialogRef = this.dialog.open(TaskDialogComponent, {
+      width: '600px',
+      maxWidth: '90vw',
+      data: {
+        task: taskData,
+        isEditMode: isEditMode
+      },
+      disableClose: true
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        if (isEditMode && taskData._id) {
+          // Update existing task
+          this.updateTaskFromModal(result, taskData._id);
+        } else {
+          // Create new task
+          this.createTaskFromModal(result);
+        }
+      } else if (isEditMode && taskData._id) {
+        // User cancelled, unlock the task
+        this.cancelEdit();
+      }
+    });
+  }
+
+  private createTaskFromModal(taskData: Partial<Task>) {
+    if (taskData.title?.trim()) {
       this.apiService.createTask({
-        title: this.newTask.title.trim(),
-        description: this.newTask.description?.trim() || '',
-        priority: this.newTask.priority || 'medium',
-        dueDate: this.newTask.dueDate || null,
+        title: taskData.title.trim(),
+        description: taskData.description?.trim() || '',
+        priority: taskData.priority || 'medium',
+        dueDate: taskData.dueDate || null,
         completed: false
       }).subscribe({
         next: () => {
-          this.newTask = { 
-            title: '', 
-            description: '', 
-            completed: false,
-            priority: 'medium',
-            dueDate: null
-          };
           // Task will be added via socket event
         },
         error: (error) => {
@@ -298,44 +383,38 @@ export class TodoComponent implements OnInit, OnDestroy {
     }
   }
 
-  editTask(task: Task) {
-    // Check if task is locked by another client
-    if (task.lockedBy && task.lockedBy !== this.clientId) {
-      this.snackBar.open('This task is being edited by another user', 'Close', { duration: 3000 });
-      return;
-    }
-
-    // Lock the task before editing
-    if (task._id) {
-      const taskId = task._id; // Store in variable to ensure it's defined
-      this.apiService.lockTask(taskId, this.clientId).subscribe({
-        next: (updatedTask) => {
-          this.editingTask = { ...task };
-          // Update task with lock info if returned
-          const index = this.tasks.findIndex(t => t._id === taskId);
-          if (index !== -1 && updatedTask) {
-            this.tasks[index].lockedBy = updatedTask.lockedBy || this.clientId;
-            this.tasks[index].lockedAt = updatedTask.lockedAt || new Date();
-          } else if (index !== -1) {
-            // Fallback: set lock info manually
-            this.tasks[index].lockedBy = this.clientId;
-            this.tasks[index].lockedAt = new Date();
-          }
-          // Start auto-unlock timer (5 minutes)
-          this.startUnlockTimer(taskId);
-          // Also set up beforeunload to unlock on page close
-          window.addEventListener('beforeunload', this.handleBeforeUnload);
+  private updateTaskFromModal(taskData: Partial<Task>, taskId: string) {
+    if (taskData.title?.trim()) {
+      this.apiService.updateTask(taskId, {
+        title: taskData.title.trim(),
+        description: taskData.description?.trim() || '',
+        priority: taskData.priority || 'medium',
+        dueDate: taskData.dueDate || null,
+        completed: taskData.completed || false
+      }, this.clientId).subscribe({
+        next: () => {
+          // Clear edit mode (unlock happens automatically on server)
+          this.clearEditMode();
+          // Task will be updated via socket event immediately
         },
         error: (error) => {
-          if (error.status === 423) {
-            this.snackBar.open('Task is already being edited by another user', 'Close', { duration: 3000 });
+          console.error('Error updating task:', error);
+          if (error.status === 401) {
+            this.apiService.logout();
+            this.router.navigate(['/login']);
+          } else if (error.status === 423) {
+            this.snackBar.open('Task is being edited by another user', 'Close', { duration: 3000 });
+            this.clearEditMode();
           } else {
-            console.error('Error locking task:', error);
-            this.snackBar.open('Error locking task', 'Close', { duration: 3000 });
+            this.snackBar.open('Error updating task', 'Close', { duration: 3000 });
           }
         }
       });
     }
+  }
+
+  editTask(task: Task) {
+    this.openTaskModal(task);
   }
 
   private startUnlockTimer(taskId: string) {
@@ -396,33 +475,8 @@ export class TodoComponent implements OnInit, OnDestroy {
   }
 
   updateTask() {
-    if (this.editingTask && this.editingTask._id && this.editingTask.title.trim()) {
-      this.apiService.updateTask(this.editingTask._id, {
-        title: this.editingTask.title.trim(),
-        description: this.editingTask.description?.trim() || '',
-        priority: this.editingTask.priority || 'medium',
-        dueDate: this.editingTask.dueDate || null,
-        completed: this.editingTask.completed
-      }, this.clientId).subscribe({
-        next: () => {
-          // Clear edit mode (unlock happens automatically on server)
-          this.clearEditMode();
-          // Task will be updated via socket event immediately
-        },
-        error: (error) => {
-          console.error('Error updating task:', error);
-          if (error.status === 401) {
-            this.apiService.logout();
-            this.router.navigate(['/login']);
-          } else if (error.status === 423) {
-            this.snackBar.open('Task is being edited by another user', 'Close', { duration: 3000 });
-            this.clearEditMode();
-          } else {
-            this.snackBar.open('Error updating task', 'Close', { duration: 3000 });
-          }
-        }
-      });
-    }
+    // This method is kept for backward compatibility but is no longer used
+    // Modal handles updates now
   }
 
   cancelEdit() {
