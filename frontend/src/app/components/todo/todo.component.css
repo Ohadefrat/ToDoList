@@ -1,10 +1,15 @@
 .todo-container {
   max-width: 1200px;
   margin: 20px auto;
-  padding: 0 20px;
+  padding: 0 20px 0px 20px;
+  min-height: calc(100vh - 100px);
 }
 
 .form-card,
+.tasks-card {
+  margin-bottom: 20px;
+}
+
 .tasks-card {
   margin-bottom: 20px;
 }
@@ -47,14 +52,11 @@
   min-width: 180px;
 }
 
-.filters-card {
-  margin-bottom: 20px;
-}
-
 .filters-row {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
+  margin-top: 16px;
 }
 
 .filter-field {
@@ -235,6 +237,12 @@
 }
 
 @media (max-width: 768px) {
+  .todo-container {
+    padding: 0 12px 32px 12px;
+    margin: 12px auto;
+    min-height: calc(100vh - 80px);
+  }
+
   .form-row {
     flex-direction: column;
   }
@@ -244,12 +252,210 @@
     width: 100%;
   }
 
+  .header-actions {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+
+  .user-info {
+    font-size: 16px;
+  }
+
+  /* Filters on mobile */
+  .filters-row {
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 12px;
+    margin-bottom: 16px;
+  }
+
+  .filter-field {
+    width: 100%;
+    min-width: unset;
+  }
+
+  /* Card adjustments */
+  .form-card {
+    margin-bottom: 16px;
+  }
+
+  .tasks-card {
+    margin-bottom: 32px;
+  }
+
+  mat-card-content {
+    padding: 16px !important;
+    padding-bottom: 24px !important;
+  }
+
+  mat-card-header {
+    padding: 16px !important;
+  }
+
+  mat-card-title {
+    font-size: 18px !important;
+  }
+
+  /* Task items on mobile */
+  .task-item {
+    padding: 16px 0 !important;
+    min-height: auto;
+  }
+
   .task-content {
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
+  }
+
+  .task-info {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .task-title-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .task-title {
+    font-size: 16px;
+    width: 100%;
+    word-break: break-word;
+  }
+
+  .task-badges {
+    width: 100%;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .priority-chip,
+  .locked-chip,
+  .editing-chip,
+  .overdue-chip {
+    font-size: 11px;
+    height: 24px;
+    padding: 0 8px;
+    margin-left: 0;
+  }
+
+  .task-description {
+    font-size: 13px;
+    margin-top: 6px;
+    word-break: break-word;
+  }
+
+  .task-due-date {
+    font-size: 12px;
+    margin-top: 6px;
+  }
+
+  .task-due-date mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
   }
 
   .task-actions {
     justify-content: flex-end;
+    width: 100%;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #e0e0e0;
+  }
+
+  .task-actions button {
+    min-width: 44px;
+    height: 44px;
+  }
+
+  /* Edit form on mobile */
+  .edit-form {
+    gap: 16px;
+    padding: 0;
+  }
+
+  .edit-actions {
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .edit-actions button {
+    min-width: 44px;
+    height: 44px;
+  }
+
+  /* Empty state */
+  .empty-state {
+    padding: 32px 16px;
+  }
+
+  .empty-state p {
+    font-size: 14px;
+  }
+
+  /* List adjustments */
+  mat-list {
+    padding: 0 !important;
+  }
+
+  mat-list-item {
+    padding: 0 !important;
+  }
+
+  mat-divider {
+    margin: 8px 0 !important;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .todo-container {
+    padding: 0 8px 24px 8px;
+  }
+
+  .header-actions {
+    padding: 8px;
+  }
+
+  mat-card-content {
+    padding: 12px !important;
+  }
+
+  mat-card-header {
+    padding: 12px !important;
+  }
+
+  .task-item {
+    padding: 12px 0 !important;
+  }
+
+  .task-title {
+    font-size: 15px;
+  }
+
+  .task-description {
+    font-size: 12px;
+  }
+
+  .priority-chip,
+  .locked-chip,
+  .editing-chip,
+  .overdue-chip {
+    font-size: 10px;
+    height: 22px;
+    padding: 0 6px;
+  }
+
+  .locked-chip mat-icon {
+    font-size: 12px;
+    width: 12px;
+    height: 12px;
   }
 }
