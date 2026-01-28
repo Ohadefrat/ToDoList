@@ -28,7 +28,7 @@ import { ApiService } from '../../services/api.service';
   template: `
     <div class="auth-container">
       <mat-card class="auth-card">
-        <mat-card-header>
+        <mat-card-header class="auth-card-header">
           <mat-card-title>Register</mat-card-title>
         </mat-card-header>
         <mat-card-content>
@@ -79,6 +79,9 @@ import { ApiService } from '../../services/api.service';
     .auth-footer {
       text-align: center;
       margin-top: 16px;
+    }
+    .auth-card-header {
+      margin-bottom: 16px;
     }
   `]
 })
