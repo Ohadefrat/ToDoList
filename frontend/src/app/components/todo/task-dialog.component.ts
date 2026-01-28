@@ -57,9 +57,10 @@ export interface TaskDialogData {
           
           <mat-form-field appearance="outline" class="date-field">
             <mat-label>Due Date</mat-label>
-            <input matInput [matDatepicker]="picker" [(ngModel)]="taskData.dueDate" placeholder="Select due date">
+            <input matInput [matDatepicker]="picker" [(ngModel)]="taskData.dueDate" placeholder="Select due date" required>
             <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
             <mat-datepicker #picker></mat-datepicker>
+            <mat-hint *ngIf="!taskData.dueDate" class="required-hint">Due date is required</mat-hint>
           </mat-form-field>
         </div>
       </div>
@@ -69,7 +70,7 @@ export interface TaskDialogData {
         <mat-icon>close</mat-icon>
         Cancel
       </button>
-      <button mat-raised-button color="primary" (click)="onSave()" [disabled]="!taskData.title?.trim()">
+      <button mat-raised-button color="primary" (click)="onSave()" [disabled]="!taskData.title?.trim() || !taskData.dueDate">
         <mat-icon>{{ data.isEditMode ? 'save' : 'add' }}</mat-icon>
         {{ data.isEditMode ? 'Save' : 'Add Task' }}
       </button>
@@ -119,6 +120,11 @@ export interface TaskDialogData {
     .date-field {
       flex: 1;
       min-width: 200px;
+    }
+    
+    .required-hint {
+      color: var(--error, #f44336);
+      font-size: 12px;
     }
     
     mat-dialog-actions {
@@ -182,7 +188,7 @@ export class TaskDialogComponent {
   }
 
   onSave() {
-    if (this.taskData.title?.trim()) {
+    if (this.taskData.title?.trim() && this.taskData.dueDate) {
       this.dialogRef.close(this.taskData);
     }
   }
