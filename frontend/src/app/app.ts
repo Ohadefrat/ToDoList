@@ -22,5 +22,5 @@ import { MatIconModule } from '@angular/material/icon';
   styleUrl: './app.css'
 })
 export class App {
-  protected readonly title = signal('To-Do List');
+  protected readonly title = signal('To-Do List - Ohad Efrat');
 }
