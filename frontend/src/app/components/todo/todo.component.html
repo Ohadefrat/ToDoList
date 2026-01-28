@@ -137,7 +137,10 @@
                             {{ getPriorityLabel(task.priority) }}
                           </mat-chip>
                           @if (isTaskLocked(task)) {
-                            <mat-chip class="locked-chip" disabled>Locked</mat-chip>
+                            <mat-chip class="locked-chip" disabled>
+                              <mat-icon>lock</mat-icon>
+                              Locked ({{ formatCountdown(getRemainingLockTime(task)) }})
+                            </mat-chip>
                           }
                           @if (isTaskLockedByMe(task)) {
                             <mat-chip class="editing-chip">Editing</mat-chip>

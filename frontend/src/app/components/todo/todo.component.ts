@@ -66,6 +66,7 @@ export class TodoComponent implements OnInit, OnDestroy {
   private subscriptions: Subscription[] = [];
   private unlockTimer: any = null; // Timer for auto-unlock
   private readonly AUTO_UNLOCK_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+  private countdownInterval: any = null; // Interval for countdown updates
 
   constructor(
     private apiService: ApiService,
@@ -86,15 +87,20 @@ export class TodoComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.loadTasks();
     this.setupSocketListeners();
+    this.startCountdownTimer();
   }
 
   ngOnDestroy() {
     // Clear unlock timer
     this.clearUnlockTimer();
+    // Clear countdown interval
+    this.clearCountdownTimer();
     // Unsubscribe from all socket events
     this.subscriptions.forEach(sub => sub.unsubscribe());
-    // Unlock any task being edited
-    this.clearEditMode();
+    // Unlock all tasks locked by this user
+    this.unlockAllUserTasks().catch(error => {
+      console.error('Error unlocking tasks on destroy:', error);
+    });
   }
 
   /**
@@ -181,6 +187,10 @@ export class TodoComponent implements OnInit, OnDestroy {
         const index = this.tasks.findIndex(t => t._id === data.id);
         if (index !== -1) {
           this.tasks[index].lockedBy = data.lockedBy;
+          // Set lockedAt timestamp if not already set (for countdown)
+          if (!this.tasks[index].lockedAt) {
+            this.tasks[index].lockedAt = new Date();
+          }
           this.applyFilters(); // Refresh to show lock status
           if (data.lockedBy !== this.clientId) {
             this.snackBar.open('Task is being edited by another user', 'Close', { duration: 3000 });
@@ -299,8 +309,18 @@ export class TodoComponent implements OnInit, OnDestroy {
     if (task._id) {
       const taskId = task._id; // Store in variable to ensure it's defined
       this.apiService.lockTask(taskId, this.clientId).subscribe({
-        next: () => {
+        next: (updatedTask) => {
           this.editingTask = { ...task };
+          // Update task with lock info if returned
+          const index = this.tasks.findIndex(t => t._id === taskId);
+          if (index !== -1 && updatedTask) {
+            this.tasks[index].lockedBy = updatedTask.lockedBy || this.clientId;
+            this.tasks[index].lockedAt = updatedTask.lockedAt || new Date();
+          } else if (index !== -1) {
+            // Fallback: set lock info manually
+            this.tasks[index].lockedBy = this.clientId;
+            this.tasks[index].lockedAt = new Date();
+          }
           // Start auto-unlock timer (5 minutes)
           this.startUnlockTimer(taskId);
           // Also set up beforeunload to unlock on page close
@@ -348,12 +368,19 @@ export class TodoComponent implements OnInit, OnDestroy {
   }
 
   private handleBeforeUnload = () => {
-    // Unlock task when user closes/navigates away
-    if (this.editingTask && this.editingTask._id) {
-      // Use sendBeacon for reliable unlock on page close
-      const unlockUrl = `http://localhost:3000/api/tasks/${this.editingTask._id}/unlock`;
-      navigator.sendBeacon(unlockUrl, JSON.stringify({ clientId: this.clientId }));
-    }
+    // Unlock all tasks locked by this user when user closes/navigates away
+    const lockedTasks = this.tasks.filter(task => 
+      task.lockedBy === this.clientId && task._id
+    );
+
+    // Use sendBeacon for reliable unlock on page close
+    lockedTasks.forEach(task => {
+      if (task._id) {
+        const unlockUrl = `http://localhost:3000/api/tasks/${task._id}/unlock`;
+        const data = JSON.stringify({ clientId: this.clientId });
+        navigator.sendBeacon(unlockUrl, data);
+      }
+    });
   }
 
   private clearEditMode() {
@@ -477,11 +504,196 @@ export class TodoComponent implements OnInit, OnDestroy {
   }
 
   logout() {
-    this.apiService.logout();
-    this.router.navigate(['/login']);
+    // Unlock all tasks locked by this user before logging out
+    this.unlockAllUserTasks().then(() => {
+      this.apiService.logout();
+      this.router.navigate(['/login']);
+    }).catch(() => {
+      // Even if unlock fails, proceed with logout
+      this.apiService.logout();
+      this.router.navigate(['/login']);
+    });
+  }
+
+  /**
+   * Unlock all tasks locked by the current user
+   */
+  private async unlockAllUserTasks(): Promise<void> {
+    const lockedTasks = this.tasks.filter(task => 
+      task.lockedBy === this.clientId && task._id
+    );
+
+    if (lockedTasks.length === 0) {
+      return Promise.resolve();
+    }
+
+    // Unlock all tasks in parallel
+    const unlockPromises = lockedTasks.map(task => {
+      if (task._id) {
+        return new Promise<void>((resolve) => {
+          this.apiService.unlockTask(task._id!, this.clientId).subscribe({
+            next: () => {
+              // Update local state
+              const index = this.tasks.findIndex(t => t._id === task._id);
+              if (index !== -1) {
+                this.tasks[index].lockedBy = null;
+                this.tasks[index].lockedAt = null;
+              }
+              resolve();
+            },
+            error: (error) => {
+              console.error(`Error unlocking task ${task._id}:`, error);
+              resolve(); // Continue even if one fails
+            }
+          });
+        });
+      }
+      return Promise.resolve();
+    });
+
+    await Promise.all(unlockPromises);
+    this.applyFilters(); // Refresh the list
   }
 
   getCurrentUser() {
     return this.apiService.getUser();
+  }
+
+  /**
+   * Calculate remaining lock time in seconds
+   */
+  getRemainingLockTime(task: Task): number {
+    if (!task.lockedAt || !this.isTaskLocked(task)) {
+      return 0;
+    }
+
+    // Handle both Date objects and string dates
+    const lockedAt = task.lockedAt instanceof Date 
+      ? task.lockedAt 
+      : new Date(task.lockedAt);
+    
+    // Check if date is valid
+    if (isNaN(lockedAt.getTime())) {
+      return 0;
+    }
+
+    const now = new Date();
+    const elapsed = now.getTime() - lockedAt.getTime();
+    const remaining = this.AUTO_UNLOCK_TIMEOUT - elapsed;
+
+    return Math.max(0, Math.floor(remaining / 1000)); // Return seconds
+  }
+
+  /**
+   * Format seconds to MM:SS format
+   */
+  formatCountdown(seconds: number): string {
+    if (seconds <= 0) return '00:00';
+    
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  }
+
+  /**
+   * Start countdown timer to update UI every second and auto-unlock expired tasks
+   */
+  private startCountdownTimer() {
+    // Clear existing interval if any
+    this.clearCountdownTimer();
+
+    // Update countdown every second
+    this.countdownInterval = setInterval(() => {
+      // Check for tasks that have expired and unlock them
+      this.checkAndUnlockExpiredTasks();
+      // Trigger change detection for locked tasks
+      this.cdr.markForCheck();
+    }, 1000);
+  }
+
+  /**
+   * Check for tasks that have exceeded lock timeout and unlock them
+   */
+  private checkAndUnlockExpiredTasks() {
+    const now = new Date();
+    const expiredTasks: Task[] = [];
+
+    // Find all tasks that have exceeded the lock timeout
+    this.tasks.forEach(task => {
+      if (task.lockedBy && task.lockedAt && task._id) {
+        const lockedAt = task.lockedAt instanceof Date 
+          ? task.lockedAt 
+          : new Date(task.lockedAt);
+        
+        if (!isNaN(lockedAt.getTime())) {
+          const elapsed = now.getTime() - lockedAt.getTime();
+          
+          // If elapsed time exceeds timeout, mark for unlock
+          if (elapsed >= this.AUTO_UNLOCK_TIMEOUT) {
+            expiredTasks.push(task);
+          }
+        }
+      }
+    });
+
+    // Unlock expired tasks
+    if (expiredTasks.length > 0) {
+      expiredTasks.forEach(task => {
+        if (task._id) {
+          // If locked by current user, unlock it
+          if (task.lockedBy === this.clientId) {
+            // If currently editing, clear edit mode first
+            if (this.editingTask && this.editingTask._id === task._id) {
+              this.clearEditMode();
+            } else {
+              // Unlock the task
+              this.apiService.unlockTask(task._id, this.clientId).subscribe({
+                next: () => {
+                  // Update local state
+                  const index = this.tasks.findIndex(t => t._id === task._id);
+                  if (index !== -1) {
+                    this.tasks[index].lockedBy = null;
+                    this.tasks[index].lockedAt = null;
+                  }
+                  this.applyFilters();
+                  console.log(`Auto-unlocked expired task (locked by me): ${task._id}`);
+                },
+                error: (error) => {
+                  console.error(`Error auto-unlocking expired task ${task._id}:`, error);
+                  // Update local state anyway (optimistic update)
+                  const index = this.tasks.findIndex(t => t._id === task._id);
+                  if (index !== -1) {
+                    this.tasks[index].lockedBy = null;
+                    this.tasks[index].lockedAt = null;
+                  }
+                  this.applyFilters();
+                }
+              });
+            }
+          } else {
+            // If locked by another user, update local state optimistically
+            // The backend periodic cleanup will handle the actual unlock and emit socket event
+            const index = this.tasks.findIndex(t => t._id === task._id);
+            if (index !== -1) {
+              this.tasks[index].lockedBy = null;
+              this.tasks[index].lockedAt = null;
+            }
+            this.applyFilters();
+            console.log(`Marked expired task as unlocked (locked by another user): ${task._id}`);
+          }
+        }
+      });
+    }
+  }
+
+  /**
+   * Clear countdown timer
+   */
+  private clearCountdownTimer() {
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
   }
 }

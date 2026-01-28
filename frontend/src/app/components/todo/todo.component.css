@@ -190,14 +190,38 @@
 
 .locked-chip,
 .editing-chip {
-  font-size: 10px;
-  height: 20px;
+  font-size: 11px;
+  height: 24px;
   margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  font-weight: 500;
 }
 
 .locked-chip {
   background-color: #ff9800 !important;
   color: white !important;
+  animation: pulse-warning 2s ease-in-out infinite;
+}
+
+.locked-chip mat-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+  opacity: 0.9;
+}
+
+@keyframes pulse-warning {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4);
+  }
+  50% {
+    opacity: 0.9;
+    box-shadow: 0 0 0 4px rgba(255, 152, 0, 0);
+  }
 }
 
 .editing-chip {
